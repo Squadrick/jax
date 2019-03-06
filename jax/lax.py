@@ -3849,11 +3849,6 @@ for _t in [_FilledConstant, _IotaConstant, _EyeConstant]:
 
 ### parallel
 
-def PmapPrimitive(name):
-  prim = Primitive(name)
-  prim.def_impl(partial(_unbound_name_error, name))
-  prim.def_abstract_eval(lambda x, *args, **kwargs: x)  # default
-  return prim
 
 def _unbound_name_error(primitive_name, *args, **kwargs):
   axis_name = kwargs['axis_name']
@@ -3870,11 +3865,13 @@ def _psum_parallel_translation_rule(c, val, device_groups):
   else:
     return c.CrossReplicaSum(val)
 
-def _psum_pmap_rule(val, axis):
+def _psum_serial_pmap_rule(val, axis):
   return _reduce_sum(val, [axis]), None
 
-psum_p = PmapPrimitive('psum')
-parallel.pmap_primitive_rules[psum_p] = _psum_pmap_rule
+psum_p = Primitive('psum')
+psum_p.def_impl(partial(_unbound_name_error, 'psum'))
+psum_p.def_abstract_eval(lambda x, *args, **kwargs: x)
+parallel.serial_pmap_primitive_rules[psum_p] = _psum_serial_pmap_rule
 pxla.parallel_translation_rules[psum_p] = _psum_parallel_translation_rule
 ad.deflinear(psum_p, _psum_transpose_rule)
 
